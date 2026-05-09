@@ -13,20 +13,6 @@ define([], () => {
             };
         }
 
-        normalizeToArray(value) {
-            if (value === null || value === undefined) {
-                return [];
-            }
-
-            return Array.isArray(value) ? value.filter(Boolean) : [value];
-        }
-
-        addUniqueValues(set, values) {
-            this.normalizeToArray(values).forEach((value) => {
-                set.add(value);
-            });
-        }
-
         setSender(senderId) {
             if (!senderId) {
                 throw new Error('Sender requerido');
@@ -56,19 +42,19 @@ define([], () => {
         }
 
         addRecipient(recipients) {
-            this.addUniqueValues(this.email.recipients, recipients);
+            this.#addUniqueValues(this.email.recipients, recipients);
 
             return this;
         }
 
         addCc(ccRecipients) {
-            this.addUniqueValues(this.email.cc, ccRecipients);
+            this.#addUniqueValues(this.email.cc, ccRecipients);
 
             return this;
         }
 
         addBcc(bccRecipients) {
-            this.addUniqueValues(this.email.bcc, bccRecipients);
+            this.#addUniqueValues(this.email.bcc, bccRecipients);
 
             return this;
         }
@@ -179,6 +165,20 @@ define([], () => {
                 relatedRecords: Object.freeze({
                     ...this.email.relatedRecords,
                 }),
+            });
+        }
+
+        #normalizeToArray(value) {
+            if (value === null || value === undefined) {
+                return [];
+            }
+
+            return Array.isArray(value) ? value.filter(Boolean) : [value];
+        }
+
+        #addUniqueValues(set, values) {
+            this.#normalizeToArray(values).forEach((value) => {
+                set.add(value);
             });
         }
     }
