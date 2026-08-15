@@ -25,7 +25,7 @@ la API nativa de NetSuite.
 
 ## Instalación
 
-1. Sube `ns-form-builder.js` al File Cabinet, en la misma carpeta que tus
+1. Sube `form-builder` al File Cabinet, en la misma carpeta que tus
    Suitelets (o en una carpeta compartida tipo `SuiteScripts/lib`).
 2. Impórtalo con una ruta relativa o absoluta en tu `define`:
 
@@ -34,7 +34,7 @@ la API nativa de NetSuite.
  * @NApiVersion 2.1
  * @NScriptType Suitelet
  */
-define(['N/serverwidget', './ns-form-builder'], (serverWidget, ns) => {
+define(['N/serverwidget', './form-builder'], (serverWidget, ns) => {
     const { createForm } = ns;
     // ...
 });
@@ -433,7 +433,7 @@ Lo mismo aplica a `form.raw` y `sublist.raw`.
  * @NApiVersion 2.1
  * @NScriptType Suitelet
  */
-define(['N/serverwidget', './ns-form-builder'], (serverWidget, ns) => {
+define(['N/serverwidget', './form-builder'], (serverWidget, ns) => {
     const { createForm } = ns;
 
     function onRequest(context) {
