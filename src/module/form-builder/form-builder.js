@@ -36,7 +36,7 @@ define(['N/serverwidget'], (serverWidget) => {
 
     function resolveType(alias, map, fallback) {
         if (!alias) return fallback;
-        return map[String(alias).toLowerCase()] || alias; // si ya es la constante real, pasa directo
+        return map[String(alias).toLowerCase()] || alias;
     }
 
     /**
