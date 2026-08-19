@@ -2,7 +2,7 @@
  *
  * @NApiVersion 2.1
  */
-define(['N/serverwidget'], (serverWidget) => {
+define(['N/ui/serverWidget'], (serverWidget) => {
     const FIELD_TYPE_ALIAS = {
         text: serverWidget.FieldType.TEXT,
         textarea: serverWidget.FieldType.TEXTAREA,
