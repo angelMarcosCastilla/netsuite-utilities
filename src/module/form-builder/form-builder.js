@@ -70,6 +70,9 @@ define(['N/ui/serverWidget'], (serverWidget) => {
         readOnly() {
             return this.displayType(serverWidget.FieldDisplayType.INLINE);
         }
+        disabled() {
+            return this.displayType(serverWidget.FieldDisplayType.DISABLED);
+        }
         hidden() {
             return this.displayType(serverWidget.FieldDisplayType.HIDDEN);
         }
