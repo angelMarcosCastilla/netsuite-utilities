@@ -124,6 +124,7 @@ define(['N/ui/serverWidget'], (serverWidget) => {
             this.raw = nsSublist;
             this._form = parentForm;
             this._fields = {};
+            this._lineCount = 0;
         }
 
         /** Crea un field en la sublista. Devuelve el FieldHandle (no la sublista). */
@@ -143,10 +144,22 @@ define(['N/ui/serverWidget'], (serverWidget) => {
 
         /** Agrega una fila completa: addRow({ item: 'A', qty: 2 }) */
         addRow(rowObject) {
-            const line = this.raw.lineCount;
+            const line = this._lineCount;
+
             Object.keys(rowObject).forEach((key) => {
-                this.raw.setSublistValue({ id: key, line, value: String(rowObject[key]) });
+                const value = rowObject[key];
+
+                if (value !== undefined && value !== null) {
+                    this.raw.setSublistValue({
+                        id: key,
+                        line,
+                        value: String(value),
+                    });
+                }
             });
+
+            this._lineCount++;
+
             return this;
         }
 
