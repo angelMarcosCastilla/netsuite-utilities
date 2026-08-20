@@ -118,6 +118,8 @@ define(['N/ui/serverWidget'], (serverWidget) => {
         if (config.entry) handle.entry()
         if (config.hidden) handle.hidden();
         if (config.disabled) handle.disabled();
+        if (config.readonly) handle.readOnly();
+
 
 
         registry[config.id] = handle;
