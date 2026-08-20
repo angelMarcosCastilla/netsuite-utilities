@@ -76,6 +76,10 @@ define(['N/ui/serverWidget'], (serverWidget) => {
         hidden() {
             return this.displayType(serverWidget.FieldDisplayType.HIDDEN);
         }
+        
+        entry() {
+            return this.displayType(serverWidget.FieldDisplayType.ENTRY);
+        }
 
         addSelectOption(value, text, isSelected = false) {
             this.raw.addSelectOption({ value, text, isSelected });
@@ -111,6 +115,8 @@ define(['N/ui/serverWidget'], (serverWidget) => {
         if (config.displayType) handle.displayType(config.displayType);
         if (config.breakType) handle.breakType(config.breakType);
         if (config.options) handle.options(config.options);
+        if (config.entry) handle.entry()
+
 
         registry[config.id] = handle;
         return handle;
