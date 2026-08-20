@@ -2,7 +2,7 @@
  *
  * @NApiVersion 2.1
  */
-define(['N/ui/serverWidget'], (serverWidget) => {
+define(['N/ui/serverWidget','N/ui/message'], (serverWidget, message) => {
     const FIELD_TYPE_ALIAS = {
         text: serverWidget.FieldType.TEXT,
         textarea: serverWidget.FieldType.TEXTAREA,
@@ -255,6 +255,23 @@ define(['N/ui/serverWidget'], (serverWidget) => {
         }
         clientScript(modulePath) {
             this.raw.clientScriptModulePath = modulePath;
+            return this;
+        }
+
+        showMessage({ description, title, type }) {
+            const mapper = {
+                warning: message.Type.WARNING,
+                error: message.Type.ERROR,
+                info: message.Type.INFORMATION,
+                success: message.Type.CONFIRMATION,
+            };
+
+            const messageType = mapper[type] || message.Type.WARNING;
+            this.raw.addPageInitMessage({
+                type: messageType,
+                title: title,
+                message: description,
+            });
             return this;
         }
 
