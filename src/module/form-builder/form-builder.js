@@ -1,8 +1,7 @@
 /**
- *
  * @NApiVersion 2.1
  */
-define(['N/ui/serverWidget','N/ui/message'], (serverWidget, message) => {
+define(['N/ui/serverWidget', 'N/ui/message'], (serverWidget, message) => {
     const FIELD_TYPE_ALIAS = {
         text: serverWidget.FieldType.TEXT,
         textarea: serverWidget.FieldType.TEXTAREA,
@@ -76,7 +75,7 @@ define(['N/ui/serverWidget','N/ui/message'], (serverWidget, message) => {
         hidden() {
             return this.displayType(serverWidget.FieldDisplayType.HIDDEN);
         }
-        
+
         entry() {
             return this.displayType(serverWidget.FieldDisplayType.ENTRY);
         }
@@ -115,12 +114,10 @@ define(['N/ui/serverWidget','N/ui/message'], (serverWidget, message) => {
         if (config.displayType) handle.displayType(config.displayType);
         if (config.breakType) handle.breakType(config.breakType);
         if (config.options) handle.options(config.options);
-        if (config.entry) handle.entry()
+        if (config.entry) handle.entry();
         if (config.hidden) handle.hidden();
         if (config.disabled) handle.disabled();
-        if (config.readonly) handle.readOnly();
-
-
+        if (config.readOnly) handle.readOnly();
 
         registry[config.id] = handle;
         return handle;
@@ -197,9 +194,15 @@ define(['N/ui/serverWidget','N/ui/message'], (serverWidget, message) => {
 
     class FormWrapper {
         constructor(title, options = {}) {
-            this.raw = serverWidget.createForm({ title, hideNavBar: !!options.hideNavBar });
+            this.raw = title ? serverWidget.createForm({ title, hideNavBar: !!options.hideNavBar }) : null;
             this._fields = {};
             this._sublists = {};
+            this._tabs = {};
+        }
+
+        addForm(form) {
+            this.raw = form;
+            return this;
         }
 
         addField(config) {
@@ -216,9 +219,18 @@ define(['N/ui/serverWidget','N/ui/message'], (serverWidget, message) => {
         }
 
         addTab(id, label) {
-            this.raw.addTab({ id, label });
+            const tab = this.raw.addTab({ id, label });
+            this._tabs[id] = tab;
             return this;
         }
+
+        insertTab(tabsId, nexttab) {
+            const tab = this._tabs[tabsId];
+            if (!tab) return this;
+            this.raw.insertTab({ tab, nexttab });
+            return this;
+        }
+
         addFieldGroup(id, label) {
             this.raw.addFieldGroup({ id, label });
             return this;
