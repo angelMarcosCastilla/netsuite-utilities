@@ -7,12 +7,11 @@ define([], () => {
         static elementName = 'custom-quick-view';
 
         static settings = {
-            // Suitelet por defecto (ajusta los IDs a tu deployment)
             defaultEndpoint: 'XXXXXX',
             floatingUrl: 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7/+esm',
-            openDelay: 200, // ms antes de abrir al pasar el mouse
-            closeDelay: 250, // ms antes de cerrar al salir
-            cacheTtl: 60000, // ms que se reutiliza una respuesta
+            openDelay: 200,
+            closeDelay: 250,
+            cacheTtl: 60000,
             placement: 'bottom-start',
             maxWidth: 480,
             maxHeight: 520,
@@ -83,22 +82,23 @@ define([], () => {
       }
     `;
 
-        static responseCache = new Map(); // respuestas del Suitelet
-        static floatingPromise = null; // módulo de Floating UI (se carga una vez)
-        static activeInstance = null; // quick view que tiene el popover abierto
-        static lastCardHeight = 440; // altura (px) de la última tarjeta con datos; el skeleton la reserva
-        static lastCardWidth = 380; // ancho (px) de la última tarjeta con datos; el skeleton lo reserva
+        static responseCache = new Map();
+        static floatingPromise = null;
+        static activeInstance = null;
+        // El skeleton conserva el tamaño anterior para evitar saltos al posicionar.
+        static lastCardHeight = 440;
+        static lastCardWidth = 380;
 
         static get observedAttributes() {
             return ['record', 'record-id', 'href'];
         }
 
-        /** Registra el custom element (una sola vez). */
         static register() {
             if (!customElements.get(CustomQuickView.elementName)) {
                 customElements.define(CustomQuickView.elementName, CustomQuickView);
             }
-            CustomQuickView.loadFloatingUI().catch(() => {}); // precarga: el primer hover es inmediato
+            // La apertura usa una posición alternativa si falla esta precarga.
+            CustomQuickView.loadFloatingUI().catch(() => {});
         }
 
         /** Escapa texto para insertarlo con seguridad dentro de HTML. */
@@ -119,7 +119,6 @@ define([], () => {
             }
         }
 
-        /** A dónde enlaza un campo según su tipo. */
         static getFieldHref(field, text) {
             if (field.link) return field.link;
             if (!text) return '';
@@ -141,14 +140,9 @@ define([], () => {
             return CustomQuickView.floatingPromise;
         }
 
-        /* ====================================================================
-         * 3. CICLO DE VIDA DEL ELEMENTO
-         * ================================================================== */
-
         constructor() {
             super();
 
-            // Link visible (shadow DOM propio)
             const shadow = this.attachShadow({ mode: 'open' });
             shadow.innerHTML = `
         <style>
@@ -161,20 +155,18 @@ define([], () => {
             this.anchor = shadow.querySelector('a');
             this.fallbackText = shadow.getElementById('fallback');
 
-            // Estado del popover de ESTE elemento (se crea al abrir y se destruye al cerrar)
             this.popoverHost = null;
             this.popoverEl = null;
             this.arrowEl = null;
             this.card = null;
-            this.requestController = null; // cancela la petición en curso
-            this.stopAutoUpdate = null; // limpia el reposicionamiento de Floating UI
-            this.runId = 0; // descarta respuestas de aperturas anteriores
-            this.reservedHeight = 0; // altura mínima mientras se muestra el skeleton
+            this.requestController = null;
+            this.stopAutoUpdate = null;
+            this.runId = 0;
+            this.reservedHeight = 0;
             this.openTimer = 0;
             this.closeTimer = 0;
             this.supportsTopLayer = typeof HTMLElement.prototype.showPopover === 'function';
 
-            // Handlers (guardados para poder quitarlos)
             this.onEnter = () => this.scheduleOpen();
             this.onLeave = () => this.scheduleClose();
             this.onKeydown = (event) => {
@@ -205,7 +197,6 @@ define([], () => {
             this.syncLink();
         }
 
-        /** Actualiza el href y el texto de respaldo según los atributos. */
         syncLink() {
             const safeHref = CustomQuickView.toSafeUrl(this.getAttribute('href'));
             if (safeHref) this.anchor.setAttribute('href', safeHref);
@@ -213,10 +204,6 @@ define([], () => {
 
             this.fallbackText.textContent = `${this.getAttribute('record') || ''} #${this.getAttribute('record-id') || ''}`;
         }
-
-        /* ====================================================================
-         * 4. DATOS (Suitelet)
-         * ================================================================== */
 
         /** Lee un límite numérico (px) de un atributo; si no es válido usa el valor por defecto. */
         getLimit(attributeName, fallback) {
@@ -233,14 +220,12 @@ define([], () => {
             return `${this.getEndpoint()}|${this.getAttribute('record')}|${this.getAttribute('record-id')}`;
         }
 
-        /** Datos en caché todavía vigentes, o null. */
         getCachedData() {
             const hit = CustomQuickView.responseCache.get(this.getCacheKey());
             const isFresh = hit && Date.now() - hit.time < CustomQuickView.settings.cacheTtl;
             return isFresh ? hit.data : null;
         }
 
-        /** Pide los datos al Suitelet (con caché corta). */
         async requestData(signal) {
             const record = this.getAttribute('record');
             const recordId = this.getAttribute('record-id');
@@ -267,7 +252,6 @@ define([], () => {
             return data;
         }
 
-        /** Pide los datos y, si hace falta, apunta el link al registro. */
         async loadData(signal) {
             const data = await this.requestData(signal);
 
@@ -278,10 +262,6 @@ define([], () => {
             if (!this.textContent.trim() && data.title) this.fallbackText.textContent = data.title;
             return data;
         }
-
-        /* ====================================================================
-         * 5. ABRIR / CERRAR EL POPOVER
-         * ================================================================== */
 
         get isOpen() {
             return this.popoverHost !== null;
@@ -305,7 +285,6 @@ define([], () => {
         }
 
         async open() {
-            // Solo un popover abierto a la vez
             const active = CustomQuickView.activeInstance;
             if (active && active !== this) active.close();
             CustomQuickView.activeInstance = this;
@@ -316,24 +295,19 @@ define([], () => {
 
             if (!this.isOpen) this.createPopover();
 
-            // 1) Con datos en caché se muestran directo. Si no, skeleton con la altura de la
-            //    última tarjeta (así Floating UI elige el lado con el tamaño final) y se pide el dato.
+            // Reservar el tamaño anterior permite posicionar el skeleton como la tarjeta final.
             const cachedData = this.getCachedData();
             if (cachedData) this.showData(cachedData);
             else this.showSkeleton();
             const dataPromise = this.loadData(this.requestController.signal);
-            dataPromise.catch(() => {}); // el error se maneja más abajo
+            dataPromise.catch(() => {});
 
             try {
-                // 2) Posicionar con Floating UI. Si falla (p. ej. la CSP bloquea el import),
-                //    se usa una posición simple: el posicionamiento nunca debe ocultar la respuesta.
                 await this.placePopover(currentRun).catch(() => this.placeWithoutFloating());
 
-                // 3) Reemplazar el skeleton por los datos
                 const data = await dataPromise;
                 if (currentRun !== this.runId) return;
 
-                // Una respuesta { ok: false } cuenta como error, la entregue requestData o loadData
                 if (!data || data.ok === false) {
                     throw new Error((data && data.error) || 'Respuesta inválida');
                 }
@@ -354,7 +328,7 @@ define([], () => {
             this.stopAutoUpdate = null;
 
             document.removeEventListener('keydown', this.onKeydown);
-            if (this.popoverHost) this.popoverHost.remove(); // sale también de la top layer
+            if (this.popoverHost) this.popoverHost.remove();
             this.popoverHost = null;
             this.popoverEl = null;
             this.arrowEl = null;
@@ -363,10 +337,6 @@ define([], () => {
             if (CustomQuickView.activeInstance === this) CustomQuickView.activeInstance = null;
         }
 
-        /* ====================================================================
-         * 6. DOM DEL POPOVER Y POSICIONAMIENTO (Floating UI)
-         * ================================================================== */
-
         createPopover() {
             const host = document.createElement('div');
             host.style.cssText =
@@ -374,11 +344,9 @@ define([], () => {
                 'background:transparent;overflow:visible;width:max-content;max-width:none;height:auto;' +
                 'z-index:2147483000;visibility:hidden;';
 
-            // Con la Popover API va en la "top layer": ningún overflow lo recorta
             if (this.supportsTopLayer) host.setAttribute('popover', 'manual');
             else host.style.display = 'none';
 
-            // Ancho máximo del popover (el CSS lo lee como variable)
             const maxWidth = this.getLimit('max-width', CustomQuickView.settings.maxWidth);
             host.style.setProperty('--max-width', `min(92vw, ${maxWidth}px)`);
 
@@ -390,7 +358,6 @@ define([], () => {
           <div class="card"></div>
         </div>`;
 
-            // Mantener abierto mientras el mouse o el foco estén dentro del popover
             host.addEventListener('mouseenter', () => this.cancelClose());
             host.addEventListener('mouseleave', () => this.scheduleClose());
             host.addEventListener('focusin', () => this.cancelClose());
@@ -419,7 +386,7 @@ define([], () => {
             if (this.stopAutoUpdate) this.stopAutoUpdate();
 
             const host = this.popoverHost;
-            host.style.visibility = 'hidden'; // oculto hasta calcular la primera posición
+            host.style.visibility = 'hidden';
             this.showHost();
 
             let isFirstPosition = true;
@@ -431,13 +398,12 @@ define([], () => {
                     strategy: 'fixed',
                     placement: this.getAttribute('placement') || CustomQuickView.settings.placement,
                     middleware: [
-                        floating.offset(10), // separación entre el link y el popover
-                        floating.flip({ padding: 8, fallbackAxisSideDirection: 'start' }), // si no cabe, cambia de lado
-                        floating.shift({ padding: 8 }), // lo desliza para no salirse de la pantalla
+                        floating.offset(10),
+                        floating.flip({ padding: 8, fallbackAxisSideDirection: 'start' }),
+                        floating.shift({ padding: 8 }),
                         floating.size({
                             padding: 8,
                             apply: ({ availableHeight }) => {
-                                // si el contenido es muy alto, aparece scroll dentro de la tarjeta
                                 if (!this.card) return;
                                 const limit = this.getLimit('max-height', CustomQuickView.settings.maxHeight);
                                 const maxHeight = Math.max(160, Math.min(Math.floor(availableHeight), limit));
@@ -450,7 +416,7 @@ define([], () => {
                         floating.arrow({ element: this.arrowEl, padding: 14 }),
                     ],
                 });
-                if (!this.popoverHost) return; // se cerró mientras se calculaba
+                if (!this.popoverHost) return;
 
                 host.style.left = `${result.x}px`;
                 host.style.top = `${result.y}px`;
@@ -459,11 +425,10 @@ define([], () => {
                 if (isFirstPosition) {
                     isFirstPosition = false;
                     host.style.visibility = 'visible';
-                    this.popoverEl.classList.add('is-visible'); // dispara la animación de entrada
+                    this.popoverEl.classList.add('is-visible');
                 }
             };
 
-            // autoUpdate reposiciona en scroll, resize y cuando cambia el tamaño del popover
             this.stopAutoUpdate = floating.autoUpdate(this, host, () =>
                 updatePosition().catch(() => {
                     if (!isFirstPosition) return;
@@ -474,7 +439,7 @@ define([], () => {
         }
 
         positionArrow(placement, arrowData = {}) {
-            const side = placement.split('-')[0]; // top | bottom | left | right
+            const side = placement.split('-')[0];
             const oppositeSide = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }[side];
 
             this.popoverEl.dataset.side = side;
@@ -499,10 +464,6 @@ define([], () => {
             this.popoverEl.classList.add('is-visible');
         }
 
-        /* ====================================================================
-         * 7. CONTENIDO DEL POPOVER: carga, error y datos
-         * ================================================================== */
-
         showSkeleton() {
             const skeletonRow =
                 '<div class="row"><div class="label"><div class="skeleton skeleton-label"></div></div>' +
@@ -522,7 +483,6 @@ define([], () => {
         <div class="body">${skeletonRow.repeat(6)}</div>`;
         }
 
-        /** Solo muestra el mensaje; se cierra al salir con el mouse o con Escape. */
         showError(error) {
             if (!this.card) return;
             const { escapeHtml } = CustomQuickView;
@@ -562,7 +522,6 @@ define([], () => {
         <div class="body">${rows}</div>
         ${buttons ? `<div class="footer">${buttons}</div>` : ''}`;
 
-            // Ya hay contenido real: se libera la altura reservada y se recuerda para la próxima vez
             this.reservedHeight = 0;
             this.card.style.minHeight = '';
             this.card.style.minWidth = '';
@@ -575,7 +534,6 @@ define([], () => {
             const { escapeHtml, toSafeUrl, getFieldHref, icons } = CustomQuickView;
             const text = String(field.value ?? '');
 
-            // Dirección: una línea por renglón + link "Mapa"
             if (field.type === 'address') {
                 const lines = text
                     .split(/\r?\n/)
@@ -589,7 +547,6 @@ define([], () => {
                 return lines + mapLink;
             }
 
-            // Resto de campos: link (email, teléfono, url, enlace propio) o texto plano
             const href = toSafeUrl(getFieldHref(field, text));
             if (!href) return escapeHtml(text);
 
@@ -598,10 +555,6 @@ define([], () => {
         }
     }
 
-    /**
-     * Registra el web component en netsuite
-     * @returns
-     */
     function createQuickView() {
         CustomQuickView.register();
         return CustomQuickView;
